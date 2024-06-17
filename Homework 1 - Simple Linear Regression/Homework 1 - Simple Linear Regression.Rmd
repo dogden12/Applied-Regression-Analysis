@@ -2,16 +2,16 @@
 title: "Simple Linear Regression (SLR)"
 author: "Davis Ogden"
 date: "2024-06-16"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, error = FALSE,
                       include = TRUE, tidy = 'formatR',
                       fig.show = 'hold', fig.align = 'center')
 ```
-
 
 ## Simple Linear Regression (Homework 1)
 
@@ -23,7 +23,96 @@ This homework assignment is based on a project on life expectancy research.
 
 Life expectancy is a measure of the average lifespan of a person born into a nation. We plan to examine the factors that can increase or decrease life expectancy and their interactions. There are almost 200 nations in the world, each with unique living conditions, economic status, and healthcare treatments. Our chosen data set contains data for 178 countries, over the 15-year period from 2000- 2015, as well as a variety of health-related and economic data about the nation for each year. It is important to note, some nations were excluded from the dataset because of repeated missing values due to difficulty finding data from smaller nations such as Togo, Vanuatu, and Cape Verde. The dataset contains four main groupings of predictor variables immunizations, mortalities, economic, and social. Data has been collected from multiple resources: the national health and economic dataset have been collected from Kaggle, and the number of medical professionals (doctors, nurses, and pharmacists, per 10,000 people in the nation) have been collected from the WHO.
 
-``` {r Read Data}
-life_data = read.csv(file = 'life_expectancy.csv')
+```{r Read Data}
+#read data into file life_data data frame
+life_data = data.frame(read.csv(file = 'life_expectancy.csv'))
 head(life_data)
 ```
+
+### Problem 1
+
+Estimate the parameters for a linear regression to predict 𝑌 based on 𝑋. Complete the following with details.
+
+```{r Problem 1}
+#1.a
+avg_doctor = mean(life_data$Medical.doctors)
+avg_doctor
+
+#1.b
+avg_life = mean(life_data$X2015Life.expectancy)
+avg_life
+
+#1.c - SSxy
+x_xbar = life_data$Medical.doctors-avg_doctor
+y_ybar = life_data$X2015Life.expectancy-avg_life
+SSxy = sum(x_xbar*y_ybar)
+SSxy
+
+#1.d - SSxx
+SSxx = sum(x_xbar^2)
+SSxx
+
+#1.e & 1.f - b_o & b_1
+b_1 = SSxy/SSxx
+b_o = avg_life - b_1*avg_doctor
+b_1
+b_o
+
+#1.g - SSE
+life_data$Y_hat_life = b_o + b_1*life_data$Medical.doctors
+SSE = sum((life_data$X2015Life.expectancy-life_data$Y_hat_life)^2)
+
+#1.h - MSE
+MSE = SSE/(nrow(life_data)-2)
+
+#1.i - SST
+SST = sum((life_data$X2015Life.expectancy-avg_life)^2)
+
+#1.j - Verify
+SSR = sum((avg_life-life_data$Y_hat_life)^2)
+check = SSR + SSE
+round(SST) == round(check)
+
+```
+
+### Problem 2
+
+In order to estimate the linear impact of 𝑋 on 𝑌, at a confidence of (1−𝛼)%, you should use the critical value, or the t value denoted as t( $1-\alpha/2$ , $n-2$), which has a value of $1.653$ (use basic R function or Excel for the exact value), at 𝛼=0.1, and $1.973$ at 𝛼=0.05. The standard error of the estimation $s\{b1\} = \sqrt(\frac{MSE}{\Sigma(X_{i}-\bar{X})^2}=0.024$ . The margin error, or 𝑡∗𝑆𝐸, of the confidence interval is $0.039$ at 𝛼=0.1, and $0.047$ at 𝛼=0.05.
+
+```{r Problem 2}
+alpha = 0.1
+n = nrow(life_data)
+t_0.1 = qt(1-0.5*alpha,n-2)
+t_0.1
+alpha = 0.05
+t_0.05 = qt(1-0.5*alpha,n-2)
+t_0.05
+
+SE_b1 = sqrt(MSE/(sum((life_data$Medical.doctors-avg_doctor)^2)))
+SE_b1
+
+t_0.1*SE_b1
+t_0.05*SE_b1
+
+```
+### Problem 3
+
+Perform a hypothesis test on the linear impact of 𝑋 on 𝑌, with a T test with a significant value of 0.1.
+
+### Problem 4
+
+Use R to obtain a summary of this SLR model. Highlight the following concepts on the output, the 
+notation, the values, and finally an interpretation.  Compute the item with R, or Excel if it is not directly 
+available in the R model summary output. 
+
+```{r Problem 4}
+model = lm(life_data$X2015Life.expectancy~life_data$Medical.doctors)
+summary(model)
+```
+a). $0.34852$
+b). $5.446$
+c). $176$
+d). 
+
+
+### Problem 5
