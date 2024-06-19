@@ -9,12 +9,12 @@ output:
 ```{r}
 # Only need to run on first use and then can comment out
 
-# install.packages('alr4')
-# install.packages('leaps')
-# install.packages('SuppDists')
-# install.packages('rmarkdown')
-# install.packages('https://cran.r-project.org/src/contrib/Archive/ALSM/ALSM_0.2.0.tar.gz', repos = NULL,
-#                  type = "source")
+#install.packages('alr4')
+#install.packages('leaps')
+#install.packages('SuppDists')
+#install.packages('rmarkdown')
+#install.packages('https://cran.r-project.org/src/contrib/Archive/ALSM/ALSM_0.2.0.tar.gz', repos = NULL,
+#                 type = "source")
 ```
 
 ```{r}
