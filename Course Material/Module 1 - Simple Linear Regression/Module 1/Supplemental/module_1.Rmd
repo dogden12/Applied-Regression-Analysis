@@ -1,0 +1,95 @@
+---
+title: "Module 1: Simple Linear Regression"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r}
+# Only need to run on first use and then can comment out
+
+# install.packages('alr4')
+# install.packages('leaps')
+# install.packages('SuppDists')
+# install.packages('rmarkdown')
+# install.packages('https://cran.r-project.org/src/contrib/Archive/ALSM/ALSM_0.2.0.tar.gz', repos = NULL,
+#                  type = "source")
+```
+
+```{r}
+library(alr4)
+library(ALSM)
+```
+
+```{r message=FALSE}
+#diamond<-file.choose() ## This method works better if the original data has no header row, and then you will need to add the variable names manually. 
+
+diamond <- read.csv("C:/Users/arthur22/Downloads/diamonds.csv")
+dim(diamond)
+class(diamond$weight)
+class(diamond$price)
+summary(diamond)
+```
+
+```{r sx}
+n<-dim(diamond)[1]
+sd(diamond$weight[1:n])  
+mean(diamond$weight[1:n])
+```
+
+```{r}
+diamond.mod<-lm(price~weight, diamond)
+summary(diamond.mod)
+anova(diamond.mod)
+```
+
+```{r}
+plot(price ~ weight, diamond)
+abline(lm(price~weight, diamond))
+residualPlots(diamond.mod, smooth=FALSE)  #this function won't work correctly if the alr4 package is not installed or the R version is not compatible. 
+```
+
+```{r confidence interval for estimators}
+alpha=0.05
+n=48
+qt(1-0.5*alpha,n-2)
+confint(lm(price~weight, diamond),"weight",level=0.95)  
+confint(lm(price~weight, diamond),level=0.95)
+```
+
+```{r prediction}
+diamond.mod
+new<-data.frame(weight=0.43)
+predict(diamond.mod,new, se.fit=TRUE) ##return the standard error of prediction 
+predict(diamond.mod, new, interval="confidence")
+predict(diamond.mod, new, interval="predict")
+
+
+ci.reg(diamond.mod, new, type='m',alpha=0.05) ## mean response 
+ci.reg(diamond.mod, new, type='n',alpha=0.05) ## single response 
+ci.reg(diamond.mod, new, type='nm', m=3, alpha=0.05) ## mean of m response 
+ci.reg(diamond.mod, new, type='w',alpha=0.05) ## Working-Hotelling simultaneous 
+```
+
+```{r}
+toluca <- read.csv("C:/Users/arthur22/Downloads/toluca.csv")
+colnames(toluca)<-c("size","hour")
+summary(toluca)
+length(toluca[,1])
+toluca$size
+```
+
+```{r}
+qf(0.95,1,23)
+qf(0.95,1,14)
+qt(1-0.1/10,23)
+```
+
+```{r LSM}
+toluca.mod<-lm(hour~size, toluca)
+summary(toluca.mod)
+anova(toluca.mod)
+
+qf(0.95,1,23)
+```

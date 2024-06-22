@@ -1,0 +1,392 @@
+---
+title: 'Module 3: Simultaneous Inference and Multiple Linear Regression'
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r}
+library(ALSM)
+```
+
+```{r}
+toluca <- read.csv("C:/Users/arthur22/Downloads/toluca.csv")
+colnames(toluca)<-c("size","hour")
+summary(toluca)
+length(toluca[,1])
+toluca$size
+```
+
+```{r working-hotelling confidence band}
+tol.mod<-lm(hour~size, toluca)
+ox<-data.frame(size=unique(toluca$size))
+x<-sort(ox$size)
+x
+
+cim<-ci.reg(tol.mod, x, type='m',alpha=0.1)# t procedure for mean, individual confidece interval
+ciw<-ci.reg(tol.mod, x, type='w',alpha=0.1)# Working hotelling procedure for mean, family confidece interval
+cib<-ci.reg(tol.mod, x, type='b',alpha=0.1)  # Bonferroni procedure for mean, family confidence interval
+
+
+plot(hour ~ size, toluca, main="Confidence Bands Comparison for mean prediction")
+abline(lm(tol.mod))
+lines(x, cim$Lower.Band,col="green", lwd=2, lty=1)
+lines(x, cim$Upper.Band, col="green", lwd=2, lty=1)
+lines(x, ciw$Lower.Band,col="red",lwd=2, lty=2)
+lines(x, ciw$Upper.Band, col="red", lwd=2, lty=2)
+lines(x, cib$Lower.Band,col="blue", lwd=2, lty=3)
+lines(x, cib$Upper.Band, col="blue", lwd=2, lty=3)
+
+legend(x=20, y=550, legend=c("T, mean, individual", "WH,mean, family","Bonferroni, mean, family"), lty=c(1,2,3), col=c("green","red","blue"),cex=0.8, bty="n")
+
+```
+
+```{r}
+d<-data.frame(c(30,65,100))
+ci.reg(tol.mod, d, type='b',alpha=0.1)
+ci.reg(tol.mod, d, type='s',alpha=0.1)
+ci.reg(tol.mod, d, type='gn',alpha=0.1)
+```
+
+```{r}
+toluca.mod<-lm(hour~size, data=toluca)
+toluca.mod$df.residual
+summary(toluca.mod)
+xbar<-mean(toluca$size)
+sd<-sd(toluca$size)  
+ssx<-sd^2*(25-1)
+xbar
+ssx
+
+#x<-data.frame(weight=unique(diamond$weight))
+
+#x<-data.frame(size=c(30,65,100))
+x<-data.frame(size=c(30,65,100))
+x
+#x<-data.frame(size=c(80,100))
+p<-predict(toluca.mod, x, se.fit=TRUE, interval="confidence") 
+#p$se.fit  ##return the stannbn      dard error of prediction s{pred}
+p
+
+ciw<-ci.reg(toluca.mod, x, type='m',alpha=0.1)  # Working hotelling 
+#cib<-ci.reg(toluca.mod, x, type='b',alpha=0.1)  # Bonferroni mean
+#cis<-ci.reg(toluca.mod, x, type='s',alpha=0.05)  # schefft Note: wrong algorithm 
+#cign<-ci.reg(toluca.mod, x, type='gn',alpha=0.05) #Bonferroni single
+
+
+ciw
+#cib
+#cis
+#cign
+
+```
+
+```{r simultaneous prediction interval for new observations Scheffe}
+
+ci.sim <- function(model, newdata, type = c("B", "S"), alpha = 0.05)
+{
+  g  <- nrow(newdata)
+  CI <- predict(model, newdata, se.fit = TRUE)
+  M  <- ifelse(match.arg(type) == "B",
+          qt(1 - alpha / (2*g), model$df),              # B "Bonferroni"" 
+          sqrt( g * qf( 1 - alpha, g, model$df)))       # S "scheffe""
+
+  spred <- sqrt( CI$residual.scale^2 + (CI$se.fit)^2 )  
+  x <- data.frame(
+    "x"     = newdata,
+    "credV" = M,
+    "fit"   = CI$fit,
+    "lower" = CI$fit - M * spred,
+    "upper" = CI$fit + M * spred)
+
+  return(x)
+}
+
+toluca.mod<-lm(hour~size, data=toluca)
+
+new <- data.frame(size= c(30, 65, 100))
+ci.sim(toluca.mod, new, type = "B")
+ci.sim(toluca.mod, new, type = "S")
+
+
+3*qf(0.95,3,23)
+sqrt(3*qf(0.95,3,23))
+
+qt(0.9875,23)
+```
+
+```{r}
+week<-c(7.8,9,10.2,11,11.7)
+#week
+y<-as.matrix(week)
+colnames(y)<-c("week")
+#y
+#class(y)
+
+temp<-c(8,4,0,-4,-8)
+Intercept<-rep(1,5) 
+x<-cbind(Intercept,temp)
+#x
+
+xty<-t(x)%*%y
+xty
+xtx<-t(x)%*%x
+xtxinv<-solve(xtx)
+xtxinv
+
+class(xty)
+class(xtxinv)
+
+betahat<-xtxinv %*% xty
+betahat
+
+
+hy<-as.matrix(c(1,2,4, 3,3,2))
+hy
+hx<-matrix(c(1, 1, 1, 1,1,1,  1, 1, 2, 3, 2, 2,  2, 3, 6, 3,2,4), ncol=3)
+hx
+hxty<-t(hx)%*%hy
+hxty
+hxtx<-t(hx)%*%hx
+hxtxinv<-solve(hxtx)
+hxtxinv
+
+hhat<-hx%*%hxtxinv%*%t(hx)
+hhat
+hhat%*%hy
+
+```
+
+```{r The Hat matrix}
+x
+xtxinv
+xty
+
+hat<-x%*%xtxinv%*%t(x)
+hat
+ide<-diag(5)
+ide-hat
+
+```
+
+```{r Find the vector of residuals y-yhat}
+resid<-y-x%*%betahat
+resid
+t(resid)%*%resid
+
+
+model<-lm(week~temp)  #double check
+#model$residuals
+summary(model)
+anova(model)
+#vcov(model)
+```
+
+```{r Compute SST, SSE and SSR}
+#I<-diag(1,21)
+J<-matrix(1,nrow=5,ncol=5)
+SST<-t(y)%*%y-(1/5)*t(y)%*%J%*%y
+SST
+
+
+SSE<-t(resid)%*%resid
+SSE
+
+SSR<-SST-SSE
+SSR
+
+MSE<-SSE/3
+MSE
+```
+
+```{r Estimated variance covariance matrix of b}
+sigmaBeta<-MSE[1,1]*solve(t(x)%*%x)
+sigmaBeta
+solve(t(x)%*%x)
+```
+
+```{r Estimate Y and variance of yhat when X is -6}
+newx<-rbind(1,-6)
+newx
+t(newx)
+yhat<-t(newx)%*%betahat
+yhat
+
+varYhat<-t(newx)%*%sigmaBeta%*%newx
+varYhat
+```
+
+```{r Double check prediction and variance of prediction}
+new<-data.frame(temp=-6)
+predvals<-predict(model,newdata = new, interval="prediction", level=0.95, se.fit=TRUE)
+predvals
+```
+
+```{r}
+summary(toluca)
+length(toluca[,1])
+toluca$size
+```
+
+```{r}
+fmeans<-colMeans(toluca)
+fmeans
+```
+
+```{r compute variance matrix from scrach}
+fcov<-crossprod(scale(toluca, center=TRUE, scale=FALSE))
+```
+
+# SXX=19800
+# SYY=307203
+# SXY=70690
+
+```{r}
+xbar<-fmeans[1]
+ybar<-fmeans[2]
+SXX<-fcov[1,1]
+SXY<-fcov[1,2]
+SYY<-fcov[2,2]
+betahat1<-SXY/SXX
+betahat0<-ybar-betahat1*xbar
+print(c(betahat0=betahat0, betahat1=betahat1))
+SYY
+```
+
+```{r Estimate the varaiance of residual RSS when sample size is 25}
+RSS<-SYY-SXY^2/SXX
+sigmahat2<-RSS/23
+sigmahat<-sqrt(sigmahat2)
+c(RSS=RSS, sigmahat2=sigmahat2,sigmahat=sigmahat)
+```
+
+```{r}
+toluca.mod<-lm(hour~size, toluca)
+summary(toluca.mod)
+toluca.mod$df.residual
+sigma(toluca.mod) #residual error
+```
+
+```{r Function for the variance and covariance of estimated effect, betahat0 and betahat1}
+vcov(toluca.mod)  #calculate variance-covariace matrix for a fitted model object
+cov2cor(vcov(toluca.mod))   #scales a covariance matrix by its diagnonal to become the correlation matrix
+
+```
+
+```{r Estimated Standard error of the parameters beta0 and beta1}
+sebeta<-sqrt(diag(vcov(toluca.mod)))
+sebeta
+          
+```
+
+```{r}
+dwaine <- read.csv("C:/Users/arthur22/Downloads/dwaine.csv")
+#data
+#plot(data)
+n<-length(dwaine[,1])
+p<-length(dwaine)
+y<-as.matrix(dwaine$Y)
+#y<-data$Y   ##this can only convert y to numeric list, not matrix. 
+#y
+#class(y)
+
+intercept<-rep(1,n)
+x1<-dwaine$X1
+x2<-dwaine$X2
+x<-cbind(intercept,x1,x2)
+
+#solve((t(x)%*%x))
+#t(x)%*%y
+beta<-solve((t(x)%*%x))%*%t(x)%*%y
+beta
+```
+
+```{r calcualte SST, SSR,  SSE from scratch}
+J<-matrix(1,nrow=n,ncol=n)
+e<-y-x%*%beta
+
+SST<-t(y)%*%y-(1/n)*t(y)%*%J%*%y
+SSE<-t(e)%*%e
+SSR<-SST-SSE
+MSE<-SSE/(n-p)
+SST
+SSE
+SSR
+
+n-p
+MSE<-SSE/(n-p)
+MSE
+
+MSR<-SSR/(p-1)
+MSR
+```
+
+```{r compute Standard error for the parameters, could also use the vcov function}
+sigmaBeta<-MSE[1,1]*solve(t(x)%*%x)
+sigmaBeta
+
+```
+
+```{r Compute the variance covariance matrix of the parameters with the vcov function.}
+dwa.mod<-lm(y~x1+x2, dwaine)
+vcov(dwa.mod)
+
+summary(dwa.mod)
+#anova(dwa.mod)
+
+```
+
+```{r degree of freedom for T dist}
+
+qt(0.975,23)
+qt(0.9875,23)
+```
+
+```{r}
+mse<-rbind(c(121.16, 0),c(0, 121.16))
+mse
+xh1<-rbind(1,65.4, 17.6)
+xh1
+xh2<-rbind(1,66,20)
+xh<-cbind(xh1, xh2)
+xh
+t(xh)
+t(xh)%*%sigmaBeta%*%xh
+
+mse+t(xh)%*%sigmaBeta%*%xh
+```
+
+```{r}
+confint(dwa.mod,level=0.95)
+```
+
+```{r}
+dwa.mod<-lm(y~x1+x2, dwaine)
+new<-data.frame(x1=c(65.4, 66), x2=c(17.6, 20)) #define a data frame type for prediction 
+new
+new1<-data.frame(x1=65.4, x2=17.6)
+qt(0.9875,18)
+qt(0.975,18)
+
+predict(dwa.mod,new, se.fit=TRUE) ##return the standard error of prediction
+predict(dwa.mod, new, interval="confidence")
+predict(dwa.mod, new, interval="predict")
+
+
+ci.reg(dwa.mod, new, type='m',alpha=0.05) ## mean 
+ci.reg(dwa.mod, new, type='nm', m=2, alpha=0.05) ## new m mean
+ci.reg(dwa.mod, new, type='gn',alpha=0.05) ## Boneforrini Simultaneous Ci for g new
+
+```
+
+```{r}
+a<-rbind(c(2, 5), c(4,1))
+b<-rbind(c(4,6), c(5,8))
+a%*%b
+y<-as.matrix(c(2,3))
+y
+t(y)%*%y
+j<-rbind(c(1, 1), c(1,1))
+t(y)%*%j
+```
