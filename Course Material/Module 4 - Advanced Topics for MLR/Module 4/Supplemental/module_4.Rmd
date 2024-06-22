@@ -1,0 +1,279 @@
+---
+title: 'Module 4: Advanced Topics for MLR'
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r}
+# Only need to run on first use and then can comment out
+
+# install.packages('lm.beta')
+```
+
+```{r}
+library(lm.beta)
+library(car)
+```
+
+```{r}
+bodyfat<-read.csv("C:/Users/arthur22/Downloads/bodyfat.csv")
+colnames(bodyfat)<-c("x1","x2","x3","y")
+
+plot(bodyfat)
+model1<-lm(y~x1, bodyfat)
+summary(model1)
+#Anova(model1,type=2)
+model2<-lm(y~x2, bodyfat)
+#summary(model2)
+#anova(model2)
+
+
+
+model3<-lm(y~x1+x2, bodyfat)
+summary(model3)
+#anova(model3)
+model4<-lm(y~x1+x2+x3, bodyfat)
+summary(model4)
+anova(model4)
+
+
+
+#anova(model4)
+anova(model3, model4)  #reduced model: model3, full model model4)
+#anova(model1, model4) #reduced modeo: model1, full model model4
+#summary(lm(y~x1+x2+x3, bodyfat))
+
+#plot(model1)
+#qf(0.95,3,16)
+```
+
+```{r Partial regression plots}
+residx2<-model2$residuals
+modelx1x2<-lm(x1~x2, bodyfat)
+residx1x2<-modelx1x2$residuals
+partialx1x2<-lm(residx2~residx1x2)
+plot(residx1x2, residx2)
+abline(partialx1x2)
+
+residx1<-model1$residuals
+modelx2x1<-lm(x2~x1, bodyfat)
+residx2x1<-modelx2x1$residuals
+partialx2x1<-lm(residx1~residx2x1)
+plot(residx2x1, residx1)
+abline(partialx2x1)
+```
+
+```{r}
+modelx2x3<-lm(y~x2+x3, bodyfat)
+summary(modelx2x3)
+anova(modelx2x3)
+
+```
+
+```{r Compute the type II SS with ANOVA() function }
+
+anova(model4)  #type I
+Anova(model4, type="II")  #type II
+
+model7<-lm(y~x3+x2+x1, bodyfat)
+anova(model7)
+summary(model7)
+```
+
+```{r partial coefficient the type II (as in PartialR2) and type I (as in SLR)}
+model1<-lm(y~x1, bodyfat)
+#anova(model1)
+#summary(model1)
+typeIrs<-summary(model1)$r.squared
+#adjustedtypeIrs<-summary(model1)$adj.r.squared
+#typeIrs
+#adjustedtypeIrs
+
+
+model2<-lm(y~x2, bodyfat)
+
+#anova(model2)
+#summary(model2)
+
+model3<-lm(y~x1+x2, bodyfat)
+#anova(model3)
+#summary(model3)
+
+model4<-lm(y~x1+x2+x3, bodyfat)
+anova(model4)
+summary(model4)
+plot(model4)
+
+model5<-lm(y~x3+x2, bodyfat)
+#tail(anova(model1)$"Sum Sq",1)  #use the tail function to get just the SSE or residual which is the last one. 
+#anova(model3)
+#anova(model3)$"Sum Sq"
+#Anova(model3)
+
+model6<-lm(y~x3, bodyfat)
+#anova(model6)
+#summary(model6)
+
+model7<-lm(y~x3+x2+x1, bodyfat)
+anova(model7)
+summary(model7)
+
+anova(model5)
+summary(model5)
+
+
+PartialR2<-function(model.full, model.reduced){
+  anova.full<-anova(model.full)
+  anova.reduced<-anova(model.reduced)
+  
+  sse.full<-tail(anova.full$"Sum Sq", 1)
+  sse.reduced<-tail(anova.reduced$"Sum Sq", 1)
+  
+  pR2<-(sse.reduced-sse.full)/sse.reduced
+  
+  return(pR2)
+}
+
+#PartialR2(model4,model5) #computing X2 enterring X1 X3
+
+model8<-lm(y~x1+x3+x2,bodyfat)
+model9<-lm(y~x1+x3,bodyfat)
+PartialR2(model8,model9)
+
+#PartialR2(model4,model5) #computing X3 enterring X1 X2
+model10<-lm(y~x1+x2+x3,bodyfat)
+model11<-lm(y~x1+x2,bodyfat)
+PartialR2(model10,model11)
+
+
+model12<-lm(y~x1+x3, bodyfat)
+anova(model12)
+```
+
+```{r effects on extra sums of squares in multicollinearity}
+model1<-lm(y~x2, bodyfat)
+summary(model1)
+anova(model1)
+
+model2<-lm(y~x1+x2, bodyfat)
+PartialR2(model2, model1)  # computer the coefficient of partial determination between Y and x1, when x2 is already in the model 
+```
+
+```{r type II partial coefficient}
+
+model1<-lm(y~x1,bodyfat)
+model2<-lm(y~x2,bodyfat)
+model3<-lm(y~x1+x2, bodyfat)
+model31<-lm(y~x2+x1, bodyfat)
+model4<-lm(y~x1+x2+x3, bodyfat)
+model5<-lm(y~x3+x2+x1,bodyfat)
+model6<-lm(y~x2+x1+x3, bodyfat)
+
+#anova(model1)
+#summary(model1)
+#anova(model2)
+#anova(model3)
+#anova(model31)
+#Anova(model3)
+
+#anova(model4)
+#anova(model5)
+#anova(model6)
+Anova(model4)
+#Anova(model4)
+
+```
+
+```{r demo multicollinearity,R^2 doenot change, but will change the parameter estimate}
+model1<-lm(y~x1+x2+x3, bodyfat)
+modle2<-lm(y~x1+x2+x3+(x1+x2), bodyfat)
+anova(model1)
+summary(model1)
+anova(model2)
+summary(model2)
+
+```
+
+```{r standardized with lm.beta package}
+model1<-lm(y~x1+x2+x3, bodyfat)
+stdmodel1<-lm.beta(model1)
+summary(stdmodel1)
+summary(model1)
+```
+```{r demo multicollinearity with the bodyfat data}
+plot(bodyfat)
+cor(bodyfat)
+model<-lm(x3~x1+x2, bodyfat)
+summary(model)
+anova(model)
+```
+```{r effect of multicollearity demo}
+model1<-lm(y~x1, bodyfat)
+anova(model1)
+#summary(model1)
+model2<-lm(y~x2+x1, bodyfat)
+anova(model2)
+#summary(model2)
+model3<-lm(y~x1+x2+x3, bodyfat)
+anova(model3)
+#summary(model3)
+
+newdata1<-data.frame(x1=25)
+predict(model1,newdata1,interval="confidence", se.fit=TRUE)
+
+```
+
+```{r test for outliers with studentized deleted residual}
+model<-lm(y~x1+x2, data=bodyfat)
+residuals.lm(model)
+lm.influence(model)$hat   #calcualte the diagonal elements of the Hat matrix
+summary(model)
+t<-anova(model)
+t$`Sum Sq`[3]   #= calcuate the SSE
+t$`Mean Sq`[3]
+lm.influence(model)
+```
+
+```{r}
+
+cell<-read.csv("C:/Users/arthur22/Downloads/battery_life.csv")
+colnames(cell)<-c("cycle","rate","temp")
+cell<-cbind(cell, cell$rate^2, cell$temp^2)
+colnames(cell)<-c("cycle","rate","temp","rate2","temp2")
+#cor(cell[,2:5])
+#summary(cell)
+mean(cell$rate)
+mean(cell$temp)
+sd(cell$rate)
+sd(cell$temp)
+
+anova(lm(cycle~rate+temp+rate2+temp2+rate*temp, data=cell))
+Anova(lm(cycle~rate+temp+rate2+temp2+rate*temp, data=cell))
+#summary(lm(cycle~rate+temp+rate2+temp2+rate*temp, data=cell))
+
+```
+
+```{r standardized data}
+celln<-cbind(cell$cycle, (cell$rate-1)/0.4,(cell$temp-20)/10)
+celln<-cbind(celln[,1],celln[,2:3],celln[,2]^2,celln[,3]^2,celln[,2]*celln[,3])
+colnames(celln)<-c("Y","x1","x2","x11","x22","x12")
+celln<-data.frame(celln)
+```
+```{r}
+lm(Y~x1+x2+x11+x22+x12, data=celln)
+anova(lm(Y~x1+x2+x11+x22+x12, data=celln))
+summary(lm(Y~x1+x2+x11+x22+x12, data=celln))
+Anova(lm(Y~x1+x2+x11+x22+x12, data=celln), type="II")
+reducedModel<-lm(Y~x1+x2+x11+x22+x12, data=celln)
+fullModel<-lm(Y~factor(x1)*factor(x2)*factor(x11)*factor(x22)*factor(x12), data=celln)
+anova(reducedModel, fullModel)
+
+```
+
+```{r Partial  F test }
+
+anova(lm(Y~x1+x2, data=celln),lm(Y~x1+x2+x11+x22+x12, data=celln))
+
+```

@@ -1,0 +1,74 @@
+---
+title: "Ridge and bootstrapping"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+library(lmridge)
+library(boot)
+library(MASS)
+```
+
+```{r}
+bodyfat_data <- read.csv("C:/Users/arthur22/Downloads/bodyfat.csv")
+#bodyfat_data <- read.csv("C:/Rdata/bodyfat.csv")
+colnames(bodyfat_data)<-c("x1","x2","x3","y")
+bodyfat_model <- lm(y~x1+x2+x3, bodyfat_data)
+```
+
+```{r}
+# ridge regression
+bodyfat_model_ridge <- lmridge(y~x1+x2+x3, as.data.frame(bodyfat_data), K=seq(0,1,0.02))
+#plot(bodyfat_model_ridge)
+vif(bodyfat_model_ridge)
+#summary(lmridge(y~x1+x2+x3, as.data.frame(bodyfat_data), K=seq(0,1,0.02)))
+summary(lmridge(y~x1+x2+x3, as.data.frame(bodyfat_data), K=0.02))
+coef(lmridge(y~x1+x2+x3, as.data.frame(bodyfat_data), K=0.02))
+fitted.values(lmridge(y~x1+x2+x3, as.data.frame(bodyfat_data), K=0.02))
+
+coef(lmridge(y~x1+x2+x3, as.data.frame(bodyfat_data), K=0))
+fitted.values(lmridge(y~x1+x2+x3, as.data.frame(bodyfat_data), K=0))
+#vif(lmridge(y~x1+x2+x3, as.data.frame(bodyfat_data), K=seq(0,1,0.02)))
+```
+
+# Bootstrapping
+
+```{r}
+# return coefficients
+boot.ridgecoef <- function(data, indices, maxit=100) {
+  data <- data[indices,]
+  mod <- lmridge(y~x1+x2+x3, data=data, K=0.02)
+  return(coef(mod))
+}
+
+bodyfat_model_bootcoeff <- boot(data=data.frame(bodyfat_data), statistic = boot.ridgecoef, R=1000, maxit=100)
+
+# view results
+bodyfat_model_bootcoeff
+# see plot of coefficients
+plot(bodyfat_model_bootcoeff, index=2)
+# 95% confidence intervals
+boot.ci(bodyfat_model_bootcoeff, type="perc", index=2)
+```
+
+```{r}
+# return coefficients
+boot.ridgefit <- function(data, indices, maxit=100) {
+  data <- data[indices,]
+  mod <- lmridge(y~x1+x2+x3, data=data, maxit=maxit)
+  return(fitted.values(mod))
+}
+
+bodyfat_model_bootfit <- boot(data=bodyfat_data, statistic = boot.ridgefit, R=1000, maxit=100)
+
+# view results
+bodyfat_model_bootfit
+# see plots
+plot(bodyfat_model_bootfit, index=2)
+# 95% confidence intervals
+boot.ci(bodyfat_model_bootfit, type="perc", index=2)
+```
+
+

@@ -1,0 +1,72 @@
+---
+title: "WLS and Bootstrapping, Coefficient and Fitted Value"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+library(boot)
+library(lmridge)
+library(MASS)
+```
+
+```{r}
+pres<-read.csv("C:/Users/arthur22/Downloads/blood_pressure.csv", header =TRUE, sep=",")
+colnames(pres)<-c("age","bp")
+```
+
+```{r}
+pres.mod<-lm(bp~age, pres)
+summary(pres.mod)
+plot(pres.mod)
+resid<-pres.mod$residuals
+plot(abs(resid)~pres$age, ylab="Absolute residual", xlab="Age")
+plot(resid~pres$age, ylab="Residual", xlab="Age")
+
+plot(resid^2~pres$age, ylab="Squared residual", xlab="Age")
+
+```
+
+# Weighted LM
+
+```{r}
+colnames(pres)<-c("age","bp")
+pres.mod<-lm(bp~age, pres)
+summary(pres.mod)
+wts1<-1/fitted(lm(abs(residuals(pres.mod))~age, pres))^2
+pres.mod2<-lm(bp~age, weight=wts1, data=pres)
+summary(pres.mod2)
+
+plot(bp~age, data=pres, main="Model Comparison")
+lines(pres$age, predict(pres.mod), col="red", lwd=2, lty=1)
+lines(pres$age, predict(pres.mod2), col="blue", lwd=2, lty=2)
+legend(20, 100, legend=c("OLS","WLS"), col=c("red","blue"),lty=1:2)
+
+wts1
+
+```
+
+# Bootstrapping
+
+```{r}
+
+# return coefficients
+boot.wlscoef <- function(data, indices, maxit=20) {
+  data <- data[indices,]
+  colnames(data)<-c("x","y")
+data.mod<-lm(y~x, data)
+  wts1<-1/fitted(lm(abs(residuals(data.mod))~x, data))^2
+data.mod2<-lm(y~x, weight=wts1, data=data)
+  return(coef(data.mod2))
+}
+
+pres_model_bootcoeff <- boot(data=pres, statistic = boot.wlscoef, R=100, maxit=20)
+
+# view results
+pres_model_bootcoeff
+# see plot of coefficients
+plot(pres_model_bootcoeff, index=2)
+# 95% confidence intervals
+boot.ci(pres_model_bootcoeff, type="perc", index=2)
+```

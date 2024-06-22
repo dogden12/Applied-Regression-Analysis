@@ -1,0 +1,212 @@
+---
+title: 'Module 7: ANOVA'
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r}
+# Only need to run on first use and then can comment out
+
+# install.packages('gmodels')
+# install.packages('ggpubr')
+```
+
+```{r}
+library(lmtest)
+library(zoo)
+library(ALSM)
+library(gmodels)
+library(ggpubr)
+library(lattice)
+library(car)
+```
+
+```{r}
+cereal<-read.csv("C:/Users/arthur22/Downloads/cereal.csv")
+cereal
+```
+
+```{r convert design to categorical}
+cereal$design <- factor(cereal$design,ordered = FALSE)
+str(cereal$design)
+```
+
+```{r Cell mean model design matrix}
+cereal$design<-relevel(cereal$design,"1")
+Dmat_cm<-model.matrix(~design+0,data=cereal)
+Dmat_cm
+#remove the intercept completely in the cell mean model
+mod_cm<-lm(y~Dmat_cm,data=cereal)
+summary(mod_cm)
+anova(mod_cm)
+```
+
+```{r Create the factor effect model using the unweighted mean as the baseline design matrix}
+cereal$design<-relevel(cereal$design,"1")
+Dmat_uw<-model.matrix(~design,data=cereal,contrasts = list(design = "contr.sum"))
+Dmat_uw
+#remove the first column for the intercept because R will automatically generate the intercept column
+Design_uw<-Dmat_uw[,-1]
+mod_uw<-lm(y~Design_uw,data=cereal)
+summary(mod_uw)
+anova(mod_uw)
+```
+
+```{r Create the factor effect model using the first level as baseline design matrix}
+cereal$design<-relevel(cereal$design,"1")
+Dmat<-model.matrix(~design,data=cereal)
+Dmat
+#cbind(cereal,Dmat)[order(cereal$design),]
+#remove the first column for the intercept because R will automatically generate the intercept column
+Design<-Dmat[,-1]
+mod1<-lm(y~Design,data=cereal)
+summary(mod1)
+```
+
+```{r Relevel so that the design 2 is the baseline level the new design matrix}
+cereal$design<-relevel(cereal$design,"2")
+Dmat2<-model.matrix(~design,data=cereal)
+Dmat2
+#cbind(cereal,Dmat)[order(cereal$design),]
+#remove the first column for the intercept because R will automatically generate the intercept column
+Design2<-Dmat2[,-1]
+mod2<-lm(y~Design2,data=cereal)
+summary(mod2)
+```
+
+```{r lm model unweighted}
+summary(lm(y~x1+x2+x3, cereal))
+anova(lm(y~x1+x2+x3, cereal))
+```
+
+```{r}
+aov(y~factor(design), cereal)
+summary(aov(y~factor(design), cereal))
+plot(aov(y~design, cereal))
+lm(y~factor(design),data=cereal)
+
+```
+
+```{r factor mean}
+coeftest(lm(y~factor(design),data=cereal))
+```
+      
+```{r}
+ALSM::oneway(cereal$y, as.numeric(cereal$design))
+```
+
+```{r  contrast}
+#oneway(cereal$y, cereal$design, mc=matrix(c(0.5,0.5,-0.5,-0.5),1,4))
+
+mc2<-matrix(c(0.5,0.5,-0.5,-0.5, 0.5, -0.5, 0.5, -0.5),2,4, byrow=TRUE)
+#oneway(cereal$y, cereal$design, mc=mc2)
+#mc3<-matrix(c(1,0,-1,0, 0, 1, -1, 0),2,4, byrow=TRUE)
+ALSM::oneway(cereal$y, as.numeric(cereal$design), mc=mc2)
+```
+
+```{r anova}
+ALSM::oneway(cereal$y, as.numeric(cereal$design))
+```
+
+```{r lm model weighted}
+cereal.x3<-as.numeric(cereal$x3)
+summary(lm(y~xw1+xw2+xw3, cereal))
+anova(lm(y~xw1+xw2+xw3, cereal))
+```
+
+```{r model matrix}
+model.matrix(y~as.factor(design), data=cereal)
+glm(y~as.factor(design), data=cereal)
+aov(y~as.factor(design), data=cereal)
+```
+
+```{r}
+ALSM::oneway(cereal$y, as.numeric(cereal$design),
+             mc=matrix(c(0.5,0.5,-0.5,-0.5),1,4))$Contrast.NOT.simultaneous
+ALSM::oneway(cereal$y, as.numeric(cereal$design),
+             mc=matrix(c(0.75,-0.25,-0.25,-0.25),1,4))$Contrast.NOT.simultaneous
+```
+
+```{r}
+with(cereal, contrasts(as.factor(design)))
+```
+
+```{r two way}
+bakery<-read.csv("C:/Users/arthur22/Downloads/bakery.csv")
+bakery$height <- as.factor(bakery$height)
+bakery$width <- as.factor(bakery$width)
+
+bm0<-lm(sales~height*width, bakery)
+
+anova(lm(sales~height*width, bakery))
+
+```
+
+```{r}
+bm<-lm(sales~height:width+0, data=bakery)
+summary(bm)
+anova(bm)
+cm<-c(1/2, -1/2 , 0 , 1/2, -1/2 , 0)
+estimable(bm,cm)
+
+```
+
+```{r cell mean}
+coef(lm(sales~height:width+0,bakery,contrasts=list(`height`=MASS::contr.sdif)))
+
+```
+
+```{r}
+bakery$a<-factor(bakery$height, levels=c(1,2,3), labels=c("bottom","middle","top"))
+bakery$b<-factor(bakery$width, levels=c(1,2), labels=c("regular","wide"))
+colnames(bakery)<-c("sales","height","width")
+
+table(bakery$height, bakery$width)
+
+```
+
+```{r}
+ggboxplot(bakery, x="height", y="sales", color="width", palette=c("#00AFBB", "#E7B800"))
+
+
+# Two-way interaction plot
+interaction.plot(x.factor = bakery$height, trace.factor = bakery$width, 
+                 response = bakery$sale, fun = mean, 
+                 type = "b", legend = TRUE, 
+                 xlab = "height", ylab="sales",
+                 pch=c(1,19), col = c("#00AFBB", "#E7B800"))
+
+```
+
+```{r additive/pooling }
+bm2<-lm(sales~height+width, data=bakery)
+
+summary(lm(sales~height+width, data=bakery))
+
+anova(lm(sales~height+width, data=bakery))
+
+```
+
+```{r Type III}
+growth <- read.csv("C:/Users/arthur22/Downloads/growth.csv")
+
+#gmod<-lm(y~gender+bone+gender:bone, data=growth)
+#summary(gmod)
+#anova(gmod)
+
+options(contrasts=c("contr.sum","contr.poly"))
+
+Anova(lm(y~gender*bone,data=growth), contrasts=list(gender=contr.sum, bone=contr.sum),type=3)
+
+ggboxplot(growth, x="gender", y="bone", color="blue", palette=c("#00AFBB", "#E7B800", "red"))
+
+
+# Two-way interaction plot
+interaction.plot(x.factor = growth$bone, trace.factor = growth$gender, 
+                 response = growth$y, fun = mean, 
+                 type = "b", legend = TRUE, 
+                 xlab = "Bone", ylab="Growth",
+                 pch=c(1,19), col = c("#00AFBB", "#E7B800", "red"))
+```

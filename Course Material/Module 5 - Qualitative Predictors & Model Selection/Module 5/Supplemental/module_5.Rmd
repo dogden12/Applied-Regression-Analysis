@@ -1,0 +1,232 @@
+---
+title: 'Module 5: Qualitative Predictors and Model Selection'
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r}
+# Only need to run on first use and then can comment out
+
+# install.packages('caret')
+```
+
+```{r}
+library(lattice)
+library(ALSM)
+library(onewaytests)
+library(car)
+library(MASS)
+library(leaps)
+library(caret)
+```
+
+# Insurance company adoption time example
+
+```{r read in data}
+ins<-read.csv("C:/Users/arthur22/Downloads/insurance.csv")
+colnames(ins)<-c("month","size","type")
+ins
+```
+
+```{r}
+model<-lm(month~type, data=ins)
+anova(model)
+summary(model)
+#residualPlots(model, quadratic=TRUE)
+```
+
+```{r}
+model2<-lm(month~size+type+size:type, data=ins)
+summary(model2)
+model.matrix(model2)
+```
+
+## When the categorical variable is imported as factor, R automatically creates dummy variables
+
+```{r read in data again}
+insN <- read.csv("C:/Users/arthur22/Downloads/insurance.csv")
+colnames(insN)<-c("month","size","type")
+insN$type <- factor(insN$type, levels = c(0, 1), ordered = FALSE) # make sure the type is factor, or categorical
+class(insN$type)
+```
+
+## The "relevel" function redefines the baseline level. 
+
+```{r}
+insN$type<-relevel(insN$type, "1")
+modelRL<-lm(month~size+type+size:type, data=insN)
+summary(modelRL)
+model.matrix(modelRL)
+```
+
+```{r}
+ins$interaction<-ins$size*ins$type
+model3<-lm(month~size+type+interaction, data=ins)
+summary(model3)
+model.matrix(model3)
+```
+
+```{r}
+qf(0.99, 2, 30)
+
+```
+
+```{r Plot with two symbols}
+xyplot(month~size, groups=type, data=ins)
+```
+
+# The last coloum is the transformed reponse variable ln(Y)
+
+```{r}
+sur<-read.csv("C:/Users/arthur22/Downloads/surgery.csv")
+colnames(sur)<-c("blood","prog","enz","liver","age","gender","x7","x8","y","lny")
+sur
+```
+
+```{r Explore the data, compute the correlation matrix and the pvalue }
+boxplot(sur[,1:4])
+plot(sur[,1:4])
+cor(sur[,1:4])
+
+
+cor.test.p <- function(x){
+    FUN <- function(x, y) cor.test(x, y)[["p.value"]]
+    z <- outer(
+      colnames(x), 
+      colnames(x), 
+      Vectorize(function(i,j) FUN(x[,i], x[,j]))
+    )
+    dimnames(z) <- list(colnames(x), colnames(x))
+    z
+}
+
+cor.test.p(sur[, 1:4])
+```
+
+```{r First order linear regression model}
+surmod1<-lm(y~blood+prog+enz+liver, data=sur)
+anova(surmod1)
+summary(surmod1)
+
+residualPlots(surmod1)
+plot(surmod1)
+```
+
+```{r Diagnostic}
+sur$fit<-surmod1$fitted.values
+sur$resid<-surmod1$residuals
+sur$group<-cut(sur$fit, 5)
+bf.test(resid~group, sur) 
+
+shapiro.test(sur$resid)
+
+```
+
+```{r Boxcox}
+bcmle<-boxcox(surmod1,lambda=seq(-3,3, by=0.1))
+lambda<-bcmle$x[which.max(bcmle$y)]
+lambda
+
+```
+
+```{r first order lm with lny}
+surmod2<-lm(lny~blood+prog+enz+liver, data=sur)
+anova(surmod2)
+summary(surmod2)
+#residualPlots(surmod2)
+plot(surmod2)
+
+
+anova(lm(lny~blood+prog+enz+liver, data=sur), lm(lny~factor(blood)*factor(prog)*factor(enz)*factor(liver), data=sur))  # doesnot work since there is not replication in the data. 
+```
+
+```{r prediction}
+new<-data.frame(blood=6, prog=59, enz=81, liver=2.5)
+ci.reg(lm(lny~blood+prog+enz+liver, data=sur), new, type='m',alpha=0.05) ## mean 
+
+```
+
+```{r Second Diagnostic}
+sur$fit2<-surmod2$fitted.values
+sur$resid2<-surmod2$residuals
+sur$group2<-cut(sur$fit, 5)
+bf.test(resid2~group2, sur) 
+
+shapiro.test(sur$resid2)
+
+```
+
+```{r best subset algorithm, method=c('sse','r2','r2adj','cp','press','aic','sbc')}
+bs<-BestSub(sur[,1:8], sur$lny, num=3)
+
+
+
+bs[which.min(bs[,"Cp"]),"Cp"]  #find the minimun Cp
+
+colnames(bs)
+
+```
+
+```{r best subset plot where method is forward, backward, exhaustive, or seqrep}
+#regss<-regsubsets(sur[,1:4],sur$lny, nvmax=44, nbest=4, method="backward")
+regss<-regsubsets(sur[,1:8],sur$lny)
+
+which.min(regss$cp)
+regss$cp[5]             #find the mininum Cp
+
+plot(regss,scale="Cp")  #scale= bic, Cp, adjr2, or r2
+
+```
+
+```{r Plot R2, R2adj, Cp, AICp, SBCp and PRESSp value fro all possible regression models}
+plotmodel.s(sur[,1:4], sur$lny)
+
+```
+
+```{r Choose a model in a stepwise algorithm, also provide AIC}
+#step(lm(lny~blood+prog+enz+liver+age+gender+x7+x8, data=sur), method="both", trace=TRUE)
+
+step(lm(lny~1, data=sur), direction="both", scope=~blood+prog+enz+liver+age+gender+x7+x8,trace=TRUE)
+```
+
+```{r Compute Cp, AIC, BIC, PRESS for a model, cpc(reduced model, full model)}
+reducedm<-lm(lny~blood+prog+enz+age+gender+x7+x8, data=sur)
+fullm<-lm(lny~blood+prog+enz+liver+age+gender+x7+x8, data=sur)
+cpc(reducedm, fullm)
+AICp(reducedm)
+SBCp(reducedm)
+pressc(reducedm)
+
+```
+
+```{r K fold cross validation, choose from "leapBackward", "leapForward" and "leapSeq"}
+set.seed(123) #set seed for reproducibility 
+
+train.control<-trainControl(method="cv", number=10)  #10 fold cross validation 
+
+step.model1<-train(lny~blood+prog+enz+x7+x8, data=sur, method="leapBackward",
+                  tuneGrid=data.frame(nvmax=5),
+                  trControl=train.control)
+step.model1$results
+
+step.model2<-train(lny~blood+prog+enz+gender+x7+x8, data=sur, method="leapBackward",
+                  tuneGrid=data.frame(nvmax=6),
+                  trControl=train.control)
+step.model2$results
+
+step.model3<-train(lny~blood+prog+enz+age+gender+x7+x8, data=sur, method="leapBackward",
+                  tuneGrid=data.frame(nvmax=7),
+                  trControl=train.control)
+step.model3$results
+
+
+```
+
+```{r}
+pf(0.49, 3, 17)
+qf(0.2, 3, 17)
+qf(0.5, 3, 17)
+
+```

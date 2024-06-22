@@ -1,0 +1,362 @@
+---
+title: 'Module 6: Model Diagnostics for MLR'
+author: "tqin"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r}
+# Only need to run on first use and then can comment out
+
+# install.packages('fmsb')
+# install.packages('lmridge')
+# install.packages('xlsx')
+```
+
+```{r}
+library(car)
+library(fmsb)
+library(xlsx)
+library(lmtest)
+library(MASS)
+library(lmridge)
+library(quantreg)
+```
+
+```{r leverage plot, cook distance, also identify which case has the largest cooks distance, dfbetas Plot}
+bodyfat<-read.csv("C:/Users/arthur22/Downloads/bodyfat.csv")
+colnames(bodyfat)<-c("x1","x2","x3","y")
+
+model<-lm(y~x1+x2, data=bodyfat)
+#plot(model)
+#cooks.distance(model)
+#influencePlot(model)
+
+#dfbetas(model)[,2]
+#windows()  # this is for dfbetas for b1
+
+#with(bodyfat, plot(x1,dfbetas(model)[,2]))
+#identify(bodyfat$x1, dfbetas(model)[,2])
+
+# windows()  # this is for dfbetas for b2
+# with(bodyfat, plot(x1,dfbetas(model)[,3]))
+# identify(bodyfat$x1, dfbetas(model)[,3])
+
+
+#dfbetas(model)
+
+#windows()
+#with(bodyfat,plot(x1,cooks.distance(model)))
+#identify(bodyfat$x1,cooks.distance(model))
+```
+
+```{r create diagnoatic plots, some plots does not come off automatically}
+model<-lm(y~x1+x2, data=bodyfat)
+plot(model, pch=18,col="red", which=c(6))
+oCooks<-sort(cooks.distance(model))
+oCooks
+```
+
+```{r variance inflation factor}
+modelx1<-lm(x1~x2+x3, data=bodyfat)
+VIF(model)
+```
+
+```{r OLS with weight is inverse of estimated MSE}
+model<-lm(y~x1+x2+x3, data=bodyfat)
+summary(model)
+sd<-residuals(lm(residuals(lm(y~x1+x2+x3, data=bodyfat))~x1+x2+x3, data=bodyfat))
+model2<-lm(y~x1+x2+x3, data=bodyfat, weights=1/sd^2)
+summary(model2)
+anova(model2)
+```
+
+```{r}
+sur<-read.csv("C:/Users/arthur22/Downloads/surgery.csv")
+colnames(sur)<-c("blood","prog","enz","liver","age","gender","x7","x8","y","lny")
+sur
+```
+
+```{r}
+surmod1<-lm(y~blood+prog+enz+liver, data=sur)
+anova(surmod1)
+summary(surmod1)
+
+residualPlots(surmod1)
+plot(surmod1)
+```
+
+```{r Added variable plots}
+avPlots(lm(y~blood+prog+enz+liver, data=sur))
+
+```
+
+```{r Influential}
+plot(bodyfat)
+bf.mod<-lm(y~x1+x2, bodyfat)
+summary(bf.mod)
+anova(bf.mod)
+hati<-lm.influence(lm(y~x1+x2, bodyfat))$hat
+mean(hati)
+
+#dffits(lm(y~x1+x2, bodyfat))
+
+#cooks.distance(lm(y~x1+x2, bodyfat))
+
+d<-dfbetas(lm(y~x1+x2, bodyfat))
+d
+which(abs(d[, 2])>1 & abs(d[,3])>1)
+d[which(abs(d[, 2])>1 & abs(d[,3])>1), ]
+
+
+#influence.measures(bf.mod)
+
+#rstudent(lm(y~x1+x2, bodyfat))  #studentized residuals
+
+```
+
+```{r Diagnostic plot}
+influencePlot(lm(y~x1+x2, bodyfat))
+
+plot(lm(y~x1+x2, bodyfat), pch=18, col="red", which=c(4))
+
+dfbetasPlots(lm(y~x1+x2, bodyfat))
+
+```
+
+```{r variance inflation factor 2}
+VIF(lm(x1~x2+x3, data=bodyfat))
+VIF(lm(x2~x1+x3, data=bodyfat))
+VIF(lm(x3~x1+x2, data=bodyfat))
+
+VIF(lm(x3~x1, data=bodyfat))
+VIF(lm(x3~x2, data=bodyfat))
+
+```
+```{r}
+sur.mod1<-lm(lny~blood+prog+enz+x8, data=sur)
+
+VIF(lm(blood~prog+enz+x8, data=sur))
+VIF(lm(prog~blood+enz+x8, data=sur))
+VIF(lm(enz~blood+prog+x8, data=sur))
+VIF(lm(x8~blood+prog+enz, data=sur))
+
+```
+
+```{r}
+influencePlot(lm(lny~blood+prog+enz+x8, data=sur))
+
+#x<-as.data.frame(rstudent(lm(lny~blood+prog+enz+x8, data=sur)))
+#lm.influence(lm(lny~blood+prog+enz+x8, data=sur))$hat
+#lm.influence(lm(lny~blood+prog+enz+x8, data=sur))
+#cooks.distance(lm(lny~blood+prog+enz+x8, data=sur))
+#write.xlsx(x, file="rs.xlsx")
+#write.xlsx(lm.influence(lm(lny~blood+prog+enz+x8, data=sur))$hat, file="hat.xlsx")
+#write.xlsx(cooks.distance(lm(lny~blood+prog+enz+x8, data=sur)), file="cook.xlsx")
+write.xlsx(dfbetas(lm(lny~blood+prog+enz+x8, data=sur)), file="dfbetas.xlsx")
+
+qf(0.2, 5, 49)
+```
+
+```{r}
+plot(lm(lny~blood+prog+enz+x8, data=sur),pch=18,col="red",which=c(4))
+```
+
+```{r}
+dfbetasPlots(lm(lny~blood+prog+enz+x8, data=sur))
+```
+
+```{r}
+pres<-read.csv("C:/Users/arthur22/Downloads/blood_pressure.csv")
+colnames(pres)<-c("age","bp")
+pres
+```
+
+```{r}
+pres.mod<-lm(bp~age, pres)
+summary(pres.mod)
+plot(pres.mod)
+resid<-pres.mod$residuals
+plot(abs(resid)~pres$age, ylab="Absolute residual", xlab="Age")
+plot(resid~pres$age, ylab="Residual", xlab="Age")
+
+plot(resid^2~pres$age, ylab="Squared residual", xlab="Age")
+
+```
+
+```{r Weighted LM}
+
+pres.mod<-lm(bp~age, pres)
+wts1<-1/fitted(lm(abs(residuals(pres.mod))~age, pres))^2
+pres.mod2<-lm(bp~age, weight=wts1, data=pres)
+summary(pres.mod2)
+
+plot(bp~age, data=pres, main="Model Comparison")
+lines(pres$age, predict(pres.mod), col="red", lwd=2, lty=1)
+lines(pres$age, predict(pres.mod2), col="blue", lwd=2, lty=2)
+legend(20, 100, legend=c("OLS","WLS"), col=c("red","blue"),lty=1:2)
+
+wts1
+```
+
+```{r Compare the standarized residuals (fitted, residual) for OLS and WLS}
+plot(fitted(pres.mod), rstandard(pres.mod))
+plot(fitted(pres.mod2), rstandard(pres.mod2))
+
+plot(fitted(pres.mod), residuals(pres.mod))
+plot(fitted(pres.mod2), residuals(pres.mod2))
+
+bptest(pres.mod)
+bptest(pres.mod2)
+
+```
+
+```{r weighted LM with simulated heteroscedastic data}
+x<-rep(seq(1:10),100)
+y<-10*x+rnorm(10,mean=0, sd=5*x)
+het<-data.frame(x,y)
+plot(lm(y~x,het))
+
+het.mod<-lm(y~x, het)
+
+
+wts1<-1/fitted(lm(abs(residuals(het.mod))~x, het))^2
+het.mod2<-lm(y~x, weight=wts1, data=het)
+
+plot(het.mod2)
+summary(het.mod2)
+
+summary(het.mod)
+
+plot(y~x, data=het, main="Model Comparison")
+lines(het$x, predict(het.mod), col="red", lwd=2, lty=1)
+lines(het$x, predict(het.mod2), col="blue", lwd=2, lty=2)
+legend(2, 150, legend=c("OLS","WLS"), col=c("red","blue"),lty=1:2)
+
+
+
+```
+
+```{r Compare the standarized residuals (fitted, residual) for OLS and WLS 2}
+plot(fitted(het.mod), rstandard(het.mod))
+plot(fitted(het.mod2), rstandard(het.mod2))
+```
+
+```{r WLS on individual outliers}
+x<-rep(seq(1:10),100)
+y<-10*x+rnorm(10,mean=0, sd=5)
+xn<-c(x, 9,10)
+yn<-c(y, 500,600)
+
+het<-data.frame(xn,yn)
+plot(lm(yn~xn,het))
+
+hetn.mod<-lm(yn~xn, het)
+
+
+wtsn1<-1/fitted(lm(abs(residuals(hetn.mod))~xn, het))^2
+hetn.mod2<-lm(yn~xn, weight=wtsn1, data=het)
+
+plot(hetn.mod2)
+summary(hetn.mod2)
+
+summary(hetn.mod)
+
+plot(yn~xn, data=het, main="Model Comparison")
+lines(het$xn, predict(hetn.mod), col="red", lwd=2, lty=1)
+lines(het$xn, predict(hetn.mod2), col="blue", lwd=2, lty=2)
+legend(2, 400, legend=c("OLS","WLS"), col=c("red","blue"),lty=1:2)
+
+```
+
+```{r Compare the standarized residuals (fitted, residual) for OLS and WLS 3}
+plot(fitted(hetn.mod), rstandard(hetn.mod))
+plot(fitted(hetn.mod2), rstandard(hetn.mod2))
+```
+
+```{r}
+summary(lm(y~x1+x2+x3, bodyfat))
+
+mod1<-lm.ridge(y~x1+x2+x3, data=bodyfat, lambda=seq(0, 1, 0.02))
+plot(mod1)
+select(mod1)
+
+mod2<-lmridge(y~x1+x2+x3, data=as.data.frame(bodyfat), K=seq(0,1, 0.02))
+plot(mod2)
+#summary(lmridge(y~x1+x2+x3, data=as.data.frame(bodyfat), K=seq(0,1, 0.02)))
+vif(mod2)
+
+```
+
+```{r}
+mod1<-lm.ridge(y~x1+x2+x3, data=bodyfat, lambda=seq(0, 1, 0.02))
+modpoint4<-lm.ridge(y~x1+x2+x3, data=bodyfat, lambda=0.04)
+#plot(mod1)
+#select(mod1)
+coef(mod1)
+#coef(modpoint4)
+
+```
+
+```{r Robust regression}
+mathpro<-read.csv("C:/Users/arthur22/Downloads/math_proficiency.csv")
+
+plot(mathpro)
+summary(lm(y~x1+x2+x3+x4+x5, data=mathpro))
+anova(lm(y~x1+x2+x3+x4+x5, data=mathpro))
+
+residualPlots(lm(y~x1+x2+x3+x4+x5, data=mathpro))
+```
+
+```{r Diagnostic 2}
+influencePlot(lm(y~x1+x2+x3+x4+x5, data=mathpro))
+
+plot(lm(y~x1+x2+x3+x4+x5, data=mathpro), pch=18, col="red", which=c(4))
+
+dfbetasPlots(lm(y~x1+x2+x3+x4+x5, data=mathpro))
+
+
+```
+```{r}
+
+qf(0.2, 6,34)
+
+```
+
+```{r}
+plot(mathpro)
+plot(mathpro$x3, mathpro$y)
+
+```
+
+```{r robust}
+rbMod<-rlm(y~x2+x3+x4, data=mathpro, psi=psi.huber)
+olsMod<-lm(y~x2+x3+x4, data=mathpro)
+summary(rbMod)
+summary(olsMod)
+cooks_dist<-cooks.distance(olsMod)
+ifpoint<- which(cooks_dist > 0.91)
+ifpoint
+residRb<-resid(rbMod)
+residualPlots(rbMod)
+```
+
+```{r}
+curve(dt(x, 30), from= -5, to=5, col="orange", xlab="Bootstrap b1", ylab="density")
+```
+
+```{r boot strap }
+toluca<-read.csv("C:/Users/arthur22/Downloads/toluca.csv")
+colnames(toluca)<-c("size","hour")
+
+fit<-boot.rq(toluca$hour, toluca$size, tau=0.025, R=200, bsmethod="xy")
+
+fit
+
+```
+```{r}
+qt(0.99954, 48)
+qf(0.5,5,49)
+```
